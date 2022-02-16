@@ -4,7 +4,7 @@ import base64
 import json
 import boto3
 
-def update_item_DDB(tenant_id, todo_id, update_title, update_content, sts):
+def update_item_DDB(item, sts):
     table_name=os.environ['DYNAMODB_NAME']
 
     dynamodb = boto3.resource(
@@ -15,23 +15,25 @@ def update_item_DDB(tenant_id, todo_id, update_title, update_content, sts):
         )
 
     dynamo_table = dynamodb.Table(table_name)
-    primary_key = { "userid" : tenant_id, "todoid" : "testtodo-id" }
+    target_key = { "userid" : item['userid'], "todoid" : item['todoid'] }
     try:
         res = dynamo_table.update_item(
-            Key=primary_key ,
-            UpdateExpression="SET title = :val1, content = :val2",
-            ExpressionAttributeValues={
-                ':val1': update_title,
-                ':val2': update_content
+            Key=target_key ,
+            UpdateExpression="SET #stat = :s",
+            ExpressionAttributeNames= {
+                '#stat' : 'status'
             },
-            ReturnValues="UPDATED_NEW"
+            ExpressionAttributeValues={
+                ':s': item['status']
+            },
+            ReturnValues="ALL_NEW"
         )
-        return res["Attributes"]
+        return res
         
     except Exception as e:
         return e
 
-def get_sts(tenant_id):
+def get_sts(user_id):
 
     ddb_arn = os.environ['DYNAMODB_ARN']
     ddb_baserole_arn = os.environ['DYNAMIC_POLICY_ROLE_ARN']
@@ -51,7 +53,7 @@ def get_sts(tenant_id):
                 "Resource": ddb_resource, 
                 "Condition": {
                     "ForAllValues:StringEquals": {
-                        "dynamodb: LeadingKeys": [ tenant_id ]
+                        "dynamodb: LeadingKeys": [ user_id ]
                     }
                 },
             }                
@@ -68,36 +70,47 @@ def get_sts(tenant_id):
 
 def handler(event, context):
     
-    #print(event)
-    #print(event["headers"])
-    #print(event["headers"]["Authorization"])
+    # decode jwt
+    tmp = event["headers"]["Authorization"].split('.')
+    jwt = json.loads(base64.urlsafe_b64decode(tmp[1] + '=' * (-len(tmp[1] ) % 4)).decode(encoding='utf-8'))
     
-    #tmp = event["headers"]["Authorization"].split('.')
-    #jwt = base64.b64decode(tmp[0]).decode('utf-8')
-    #jwt = json.loads(base64.urlsafe_b64decode(tmp[1] + '=' * (-len(tmp[1] ) % 4)).decode(encoding='utf-8'))
+    # get content
+    request_body = eval(event["body"])
 
-    #print(jwt["custom:tenant_id"])
-    #tenant_id = jwt["custom:tenant_id"] 
-    
     # sts
-    tenant_id="dummy-id-12345"
-    todo_id="testtodo-id"
-    sts = get_sts(tenant_id)
+    user_id = jwt["sub"]
+    sts = get_sts(user_id)
     
-    #id = event["queryStringParameters"]["id"]
-    #print(id)
-    #res = get_from_RDS(id,tenant_id,sts)
-    
-    update_title = "new title"
-    update_content = "new content"
-    
-    res = update_item_DDB(tenant_id, todo_id, update_title, update_content ,sts)
+        # create Item
+    try:
+        item = {
+                    'userid': user_id,
+                    'todoid': event['pathParameters']['todo-id'],
+                    'status': request_body["status"]
+        }
+    except Exception as e:
+        # Attribute Error
+        error_text = {
+            'type': "Attribute Error",
+            'detail': "request has no attribute " + str(e) + "."
+        }
+        return {
+            'statusCode': 400,
+            'headers': {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+            },
+            'body': json.dumps(error_text)
+        }
+
+    res = update_item_DDB(item, sts)
+
     
     return {
-        'statusCode': 200,
+        'statusCode': res['ResponseMetadata']['HTTPStatusCode'],
         'headers': {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "Content-Type",
         },
-        'body': res
+        'body': json.dumps(res.get('Attributes'))
     }

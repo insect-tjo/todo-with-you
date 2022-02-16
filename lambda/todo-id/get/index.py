@@ -4,7 +4,7 @@ import base64
 import json
 import boto3
 
-def delete_item_DDB(tenant_id, todo_id, sts):
+def get_item_DDB(user_id, todo_id, sts):
     table_name=os.environ['DYNAMODB_NAME']
 
     dynamodb = boto3.resource(
@@ -12,18 +12,18 @@ def delete_item_DDB(tenant_id, todo_id, sts):
         aws_access_key_id=sts["Credentials"]["AccessKeyId"],
         aws_secret_access_key=sts["Credentials"]["SecretAccessKey"],
         aws_session_token=sts["Credentials"]["SessionToken"],
-        )
-
+    )
+    
     dynamo_table = dynamodb.Table(table_name)
-    primary_key = { "userid" : tenant_id, "todoid" : "testtodo-id" }
+    get_key = { "userid" : user_id, "todoid" : todo_id }
     try:
-        res = dynamo_table.delete_item(Key=primary_key)
+        res = dynamo_table.get_item(Key=get_key)
         return res
         
     except Exception as e:
         return e
 
-def get_sts(tenant_id):
+def get_sts(user_id):
 
     ddb_arn = os.environ['DYNAMODB_ARN']
     ddb_baserole_arn = os.environ['DYNAMIC_POLICY_ROLE_ARN']
@@ -38,12 +38,12 @@ def get_sts(tenant_id):
             {
                 "Effect": "Allow", 
                 "Action": [
-                    "dynamodb:DeleteItem"
+                    "dynamodb:GetItem"
                 ],
                 "Resource": ddb_resource, 
                 "Condition": {
                     "ForAllValues:StringEquals": {
-                        "dynamodb: LeadingKeys": [ tenant_id ]
+                        "dynamodb: LeadingKeys": [ user_id ]
                     }
                 },
             }                
@@ -60,33 +60,23 @@ def get_sts(tenant_id):
 
 def handler(event, context):
     
-    #print(event)
-    #print(event["headers"])
-    #print(event["headers"]["Authorization"])
-    
-    #tmp = event["headers"]["Authorization"].split('.')
-    #jwt = base64.b64decode(tmp[0]).decode('utf-8')
-    #jwt = json.loads(base64.urlsafe_b64decode(tmp[1] + '=' * (-len(tmp[1] ) % 4)).decode(encoding='utf-8'))
+    # decode jwt
+    tmp = event["headers"]["Authorization"].split('.')
+    jwt = json.loads(base64.urlsafe_b64decode(tmp[1] + '=' * (-len(tmp[1] ) % 4)).decode(encoding='utf-8'))
 
-    #print(jwt["custom:tenant_id"])
-    #tenant_id = jwt["custom:tenant_id"] 
-    
+
     # sts
-    tenant_id="dummy-id-12345"
-    todo_id="testtodo-id"
-    sts = get_sts(tenant_id)
+    user_id = jwt["sub"]
+    sts = get_sts(user_id)
     
-    #id = event["queryStringParameters"]["id"]
-    #print(id)
-    #res = get_from_RDS(id,tenant_id,sts)
-    
-    res = delete_item_DDB(tenant_id, todo_id, sts)
+    # get data from DynamoDB
+    res = get_item_DDB(user_id, event['pathParameters']['todo-id'], sts)
     
     return {
-        'statusCode': 200,
+        'statusCode': res['ResponseMetadata']['HTTPStatusCode'],
         'headers': {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "Content-Type",
         },
-        'body': res
+        'body': json.dumps(res.get('Item'))
     }
