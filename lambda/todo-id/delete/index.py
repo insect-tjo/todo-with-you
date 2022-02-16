@@ -4,7 +4,7 @@ import base64
 import json
 import boto3
 
-def get_item_DDB(tenant_id, todo_id, sts):
+def delete_item_DDB(item, sts):
     table_name=os.environ['DYNAMODB_NAME']
 
     dynamodb = boto3.resource(
@@ -15,15 +15,18 @@ def get_item_DDB(tenant_id, todo_id, sts):
         )
 
     dynamo_table = dynamodb.Table(table_name)
-    primary_key = { "userid" : tenant_id, "todoid" : "testtodo-id" }
+    delete_key = { "userid" : item['userid'], "todoid" : item['todoid'] }
     try:
-        res = dynamo_table.get_item(Key=primary_key)
-        return res["Item"]
+        res = dynamo_table.delete_item(
+            Key=delete_key,
+            ReturnValues="ALL_OLD"
+            )
+        return res
         
     except Exception as e:
         return e
 
-def get_sts(tenant_id):
+def get_sts(user_id):
 
     ddb_arn = os.environ['DYNAMODB_ARN']
     ddb_baserole_arn = os.environ['DYNAMIC_POLICY_ROLE_ARN']
@@ -38,14 +41,12 @@ def get_sts(tenant_id):
             {
                 "Effect": "Allow", 
                 "Action": [
-                    "dynamodb:GetItem",
-                    "dynamodb:Query",
-                    "dynamodb:Scan",
+                    "dynamodb:DeleteItem"
                 ],
                 "Resource": ddb_resource, 
                 "Condition": {
                     "ForAllValues:StringEquals": {
-                        "dynamodb: LeadingKeys": [ tenant_id ]
+                        "dynamodb: LeadingKeys": [ user_id ]
                     }
                 },
             }                
@@ -62,33 +63,44 @@ def get_sts(tenant_id):
 
 def handler(event, context):
     
-    #print(event)
-    #print(event["headers"])
-    #print(event["headers"]["Authorization"])
-    
-    #tmp = event["headers"]["Authorization"].split('.')
-    #jwt = base64.b64decode(tmp[0]).decode('utf-8')
-    #jwt = json.loads(base64.urlsafe_b64decode(tmp[1] + '=' * (-len(tmp[1] ) % 4)).decode(encoding='utf-8'))
+    # decode jwt
+    tmp = event["headers"]["Authorization"].split('.')
+    jwt = json.loads(base64.urlsafe_b64decode(tmp[1] + '=' * (-len(tmp[1] ) % 4)).decode(encoding='utf-8'))
 
-    #print(jwt["custom:tenant_id"])
-    #tenant_id = jwt["custom:tenant_id"] 
-    
+
     # sts
-    tenant_id="dummy-id-12345"
-    todo_id="testtodo-id"
-    sts = get_sts(tenant_id)
+    user_id = jwt["sub"]
+    sts = get_sts(user_id)
     
-    #id = event["queryStringParameters"]["id"]
-    #print(id)
-    #res = get_from_RDS(id,tenant_id,sts)
+    # assenble Item
+    try:
+        item = {
+                    'userid': user_id,
+                    'todoid': event['pathParameters']['todo-id'],
+        }
+    except Exception as e:
+        # Attribute Error
+        error_text = {
+            'type': "Input Error",
+            'detail': "request is invalid."
+        }
+        return {
+            'statusCode': 400,
+            'headers': {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+            },
+            'body': json.dumps(error_text)
+        }
     
-    res = get_item_DDB(tenant_id, todo_id, sts)
+    # delete item
+    res = delete_item_DDB(item, sts)
     
     return {
-        'statusCode': 200,
+        'statusCode': res['ResponseMetadata']['HTTPStatusCode'],
         'headers': {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "Content-Type",
         },
-        'body': res
+        'body': json.dumps(res.get('Attributes'))
     }

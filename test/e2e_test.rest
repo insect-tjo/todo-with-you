@@ -1,0 +1,96 @@
+@apiUri = <APIのベースエンドポイントを入力してください。>
+# ex. @apiUri = https://xxxxxx.execute-api.ap-northeast-1.amazonaws.com/v1
+
+# @name login
+POST https://cognito-idp.ap-northeast-1.amazonaws.com/ HTTP/1.1
+Content-Type: application/x-amz-json-1.1
+X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth
+
+{
+    "AuthFlow": "USER_PASSWORD_AUTH",
+    "ClientId": "<Cognitoユーザプールに紐づくクライアントIDを入力してください>", 
+    // ex. "ClientId": "4b5e7i4g71rlofxxxxxxxxxxxx",
+    "AuthParameters": {
+        "USERNAME": "<認証するユーザのユーザ名>",
+        // ex.  "USERNAME": "testuser",
+        "PASSWORD": "<認証するユーザのパスワード>"
+        // ex.  "PASSWORD": "P@ssw0rd!!!!",
+    }
+}
+
+######### collection 
+
+### @name collection-post
+@authToken = {{ login.response.body.$.AuthenticationResult.IdToken }}
+
+
+POST {{ apiUri }}/todos
+Authorization: {{ authToken }}
+Content-Type: application/json
+
+{
+    "title": "<任意のToDoタイトルを入力>" ,
+    // ex. "title": "todo title testdata" ,,
+    "content": "<任意のToDo内容を入力>"
+    // ex. "content": "todo content testdata",
+}
+
+### @name collection-get
+@authToken = {{ login.response.body.$.AuthenticationResult.IdToken }}
+
+GET {{ apiUri }}/todos
+Authorization: {{ authToken }}
+
+
+######### object todo
+
+### @name object-delete
+@authToken = {{ login.response.body.$.AuthenticationResult.IdToken }}
+@delete-todo-id = <削除するToDoのtodoidを入力>
+# ex. @delete-todo-id = 1644992109.312936
+DELETE  {{ apiUri }}/todos/{{ delete-todo-id }}
+Authorization: {{ authToken }}
+
+
+
+### @name object-get
+@authToken = {{ login.response.body.$.AuthenticationResult.IdToken }}
+@get-todo-id =  <取得するToDoのtodoidを入力>
+# ex. @get-todo-id = 1644992044.337332
+GET {{ apiUri }}/todos/{{ get-todo-id }}
+Authorization: {{ authToken }}
+
+
+
+### @name object-put(update)
+@authToken = {{ login.response.body.$.AuthenticationResult.IdToken }}
+@put-todo-id =  <更新するToDoのtodoidを入力>
+# ex. @put-todo-id = 1644992044.337332
+PUT {{ apiUri }}/todos/{{ get-todo-id }}
+Authorization: {{ authToken }}
+Content-Type: application/json
+
+{
+    "title": "<更新後のToDoタイトルを入力>" ,
+    // ex. "title": "update todo title testdata" ,,
+    "content": "<更新後のToDo内容を入力>",
+    // ex. "content": "update todo content testdata",
+    "status": "<更新後のステータスを入力>"
+    // ex. "status": "in-progress"
+}
+
+
+
+### @name objects-patch
+@authToken = {{ login.response.body.$.AuthenticationResult.IdToken }}
+@patch-todo-id = <更新するToDoのtodoidを入力>
+# ex. @patch-todo-id = 1644992044.337332
+
+PATCH {{ apiUri }}/todos/{{ patch-todo-id }}
+Authorization: {{ authToken }}
+Content-Type: application/json
+
+{
+    "status": "<更新後のステータスを入力>"
+    // ex. "status": "done"
+}

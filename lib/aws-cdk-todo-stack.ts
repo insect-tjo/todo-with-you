@@ -4,11 +4,13 @@ import  * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { CognitoToApiGatewayToLambda } from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
-import { LambdaToDynamoDB } from '@aws-solutions-constructs/aws-lambda-dynamodb';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+// import { CognitoToApiGatewayToLambda } from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
+import * as cognitoApigLambda from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
 
 export class AwsCdkTodoStack extends Stack {
+
+  public readonly constCAL: cognitoApigLambda.CognitoToApiGatewayToLambda;
+
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -71,7 +73,7 @@ export class AwsCdkTodoStack extends Stack {
 
     //DynamoDBへのPUT用Lambda(POST)
     const postToDynamo = new lambda.Function(this, 'postToDynamo', {
-      code: lambda.Code.fromAsset(`./lambda/post`),
+      code: lambda.Code.fromAsset(`./lambda/todos/post`),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: 'index.handler',
       environment: {
@@ -84,7 +86,7 @@ export class AwsCdkTodoStack extends Stack {
 
     //dynamo-lambda(GET)
     const getFromDynamo = new lambda.Function(this, 'getFromDynamo', {
-      code: lambda.Code.fromAsset(`./lambda/get`),
+      code: lambda.Code.fromAsset(`./lambda/todos/get`),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: 'index.handler',
       environment: {
@@ -97,7 +99,20 @@ export class AwsCdkTodoStack extends Stack {
 
     //dynamo-lambda(PUT(update))
     const updateToDynamo = new lambda.Function(this, 'updateToDynamo', {
-      code: lambda.Code.fromAsset(`./lambda/update`),
+      code: lambda.Code.fromAsset(`./lambda/todo-id/update`),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: 'index.handler',
+      environment: {
+        'DYNAMODB_NAME' : table.tableName,
+        'DYNAMODB_ARN' : table.tableArn,
+        'DYNAMIC_POLICY_ROLE_ARN' : ddbBaseRole.roleArn,
+      },
+      role: lambdaExecSTSRole
+    });
+    
+    //dynamo-lambda(PATCH())
+    const patchToDynamo = new lambda.Function(this, 'patchToDynamo', {
+      code: lambda.Code.fromAsset(`./lambda/todo-id/patch`),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: 'index.handler',
       environment: {
@@ -110,7 +125,20 @@ export class AwsCdkTodoStack extends Stack {
 
     //dynamo-lambda(DELETE)
     const deleteFromDynamo = new lambda.Function(this, 'deleteFromDynamo', {
-      code: lambda.Code.fromAsset(`./lambda/delete`),
+      code: lambda.Code.fromAsset(`./lambda/todo-id/delete`),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: 'index.handler',
+      environment: {
+        'DYNAMODB_NAME' : table.tableName,
+        'DYNAMODB_ARN' : table.tableArn,
+        'DYNAMIC_POLICY_ROLE_ARN' : ddbBaseRole.roleArn,
+      },
+      role: lambdaExecSTSRole
+    });
+
+    //dynamo-lambda(GET)
+    const getFromDynamoObj = new lambda.Function(this, 'getFromDynamoObj', {
+      code: lambda.Code.fromAsset(`./lambda/todo-id/get`),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: 'index.handler',
       environment: {
@@ -122,55 +150,68 @@ export class AwsCdkTodoStack extends Stack {
     });
 
     // The code that defines your stack goes here
-    const constCAL = new CognitoToApiGatewayToLambda(this, 'cognito-apigateway-lambda', {
+    this.constCAL = new cognitoApigLambda.CognitoToApiGatewayToLambda(this, 'cognito-apigateway-lambda', {
       existingLambdaObj: getFromDynamo,
       apiGatewayProps: {
         proxy: false,
-        defaultCorsPreflightOptions: {
-          allowOrigins: apigateway.Cors.ALL_ORIGINS,
-          allowMethods: apigateway.Cors.ALL_METHODS
-        },
+        // defaultCorsPreflightOptions: {
+        //   allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        //   allowMethods: apigateway.Cors.ALL_METHODS
+        // },
         deployOptions: {
           stageName: apiVersion,
         },
+      },
+      cognitoUserPoolClientProps: {
+        authFlows: {
+          userPassword: true,
+        }
       }
   });
 
     //Add a resource to the API gateway 
-    const resource = constCAL.apiGateway.root.addResource('todo');
+    const resource = this.constCAL.apiGateway.root.addResource('todos');
+    const resource_id = resource.addResource('{todo-id}');
 
+    // /// resource collection 
     //Add a method to the Resource(todo):POST
-//    const postIntegration = new apigateway.LambdaIntegration(postToDynamo.lambdaFunction);
-//    resource.addMethod("POST", postIntegration, {
-//      authorizationType: apigateway.AuthorizationType.COGNITO
-//    });
+    resource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(postToDynamo)
+    );
+ 
+    // //Add a method to the Resource(todo):GET
+    resource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(getFromDynamo)
+    );
 
-    const postIntegration = new apigateway.LambdaIntegration(postToDynamo);
-    resource.addMethod("POST", postIntegration, {
-      authorizationType: apigateway.AuthorizationType.COGNITO
-    });
+    // /// resource_id 
+    // //Add a method to the Resource(todo):PUT
+     resource_id.addMethod(
+      "PUT",
+      new apigateway.LambdaIntegration(updateToDynamo)
+    );
 
-    
+    // //Add a method to the Resource(todo):PUT
+    resource_id.addMethod(
+      "PATCH",
+      new apigateway.LambdaIntegration(patchToDynamo)
+    );
 
-    //Add a method to the Resource(todo):GET
-    const getIntegration = new apigateway.LambdaIntegration(getFromDynamo);
-    resource.addMethod("GET", getIntegration, {
-      authorizationType: apigateway.AuthorizationType.COGNITO
-    });
+    // //Add a method to the Resource(todo):DELETE
+    resource_id.addMethod(
+      "DELETE",
+      new apigateway.LambdaIntegration(deleteFromDynamo)
+    );
 
-    //Add a method to the Resource(todo):PUT
-    const updateIntegration = new apigateway.LambdaIntegration(updateToDynamo);
-    resource.addMethod("PUT", updateIntegration, {
-      authorizationType: apigateway.AuthorizationType.COGNITO
-    });
+    // //Add a method to the Resource(todo):GET
+    resource_id.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(getFromDynamoObj)
+    );
 
-    //Add a method to the Resource(todo):DELETE
-    const deleteIntegration = new apigateway.LambdaIntegration(deleteFromDynamo);
-    resource.addMethod("DELETE", deleteIntegration, {
-      authorizationType: apigateway.AuthorizationType.COGNITO
-    });
-
-    constCAL.addAuthorizers();
+    this.constCAL.addAuthorizers();
 
   }
 
