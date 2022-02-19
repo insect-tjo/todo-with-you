@@ -51,7 +51,7 @@ cdk deploy --all
 （Lambdaの数、DynamoDBのスキーマなど）
 
 ```sh
-npm test
+npm run test
 ```
 
 ### テスト(Postman(またはClient REST)によるAPIのE2Eテスト)
