@@ -1,0 +1,455 @@
+{
+	"info": {
+		"_postman_id": "3cf174fe-40c1-4c65-87d4-766e06d4c9e9",
+		"name": "Test_Todo_API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth with cognito",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"let token = pm.response.json().AuthenticationResult;\r",
+							"pm.collectionVariables.set(\"idtoken\", token.IdToken);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"content-type": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-amz-json-1.1",
+						"type": "default"
+					},
+					{
+						"key": "X-Amz-Target",
+						"value": "AWSCognitoIdentityProviderService.InitiateAuth",
+						"type": "default"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"AuthFlow\": \"USER_PASSWORD_AUTH\",\r\n    \"ClientId\": \"{{ClientId}}\",\r\n    \"AuthParameters\": {\r\n        \"USERNAME\": \"{{username}}\",\r\n        \"PASSWORD\": \"{{password}}\"\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://cognito-idp.ap-northeast-1.amazonaws.com/",
+					"protocol": "https",
+					"host": [
+						"cognito-idp",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "post_todos_create_resource",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"var jsonData = pm.response.json();\r",
+							"pm.test(\"title=todo title testdata, content=todo content testdata,status=todoであること\", () => {\r",
+							"    pm.expect(jsonData.title).to.eql(\"todo title testdata\");\r",
+							"    pm.expect(jsonData.content).to.eql(\"todo content testdata\");\r",
+							"    pm.expect(jsonData.status).to.eql(\"todo\");\r",
+							"});\r",
+							"\r",
+							"let todoid = pm.response.json().todoid;\r",
+							"pm.collectionVariables.set(\"todo-id\", todoid);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{idtoken}}",
+						"type": "default"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"title\": \"todo title testdata\" ,\r\n    \"content\": \"todo content testdata\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"todos"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get_todos_get_todos",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{idtoken}}",
+						"type": "default"
+					}
+				],
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"todos"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get_todoid_get_todo",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{idtoken}}",
+						"type": "default"
+					}
+				],
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos/{{todo-id}}",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"todos",
+						"{{todo-id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "put_todoid_update_todo",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"var jsonData = pm.response.json();\r",
+							"pm.test(\"title=updated todo title testdataa, content=updated content testdata,status=todoであること\", () => {\r",
+							"    pm.expect(jsonData.title).to.eql(\"updated todo title testdataa\");\r",
+							"    pm.expect(jsonData.content).to.eql(\"updated content testdata\");\r",
+							"    pm.expect(jsonData.status).to.eql(\"todo\");\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{idtoken}}",
+						"type": "default"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"title\": \"updated todo title testdataa\" ,\r\n    \"content\": \"updated content testdata\" ,\r\n    \"status\": \"todo\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos/{{todo-id}}",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"todos",
+						"{{todo-id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "patch_todoid_update_todostatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"var jsonData = pm.response.json();\r",
+							"pm.test(\"title=updated todo title testdataa, content=updated content testdata,status=in-progressであること\", () => {\r",
+							"    pm.expect(jsonData.title).to.eql(\"updated todo title testdataa\");\r",
+							"    pm.expect(jsonData.content).to.eql(\"updated content testdata\");\r",
+							"    pm.expect(jsonData.status).to.eql(\"in-progress\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{idtoken}}",
+						"type": "default"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"status\": \"in-progress\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos/{{todo-id}}",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"todos",
+						"{{todo-id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete_todoid_delete_todo",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{idtoken}}",
+						"type": "default"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos/{{todo-id}}",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"todos",
+						"{{todo-id}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "ClientId",
+			"value": "xxxxxxxxxxxxxxxxxxxxxxxxx",
+			"type": "default"
+		},
+		{
+			"key": "username",
+			"value": "xxxxxxx",
+			"type": "default"
+		},
+		{
+			"key": "password",
+			"value": "xxxxxxx",
+			"type": "default"
+		},
+		{
+			"key": "apigatewayid",
+			"value": "xxxxxxxx",
+			"type": "default"
+		},
+		{
+			"key": "idtoken",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "todo-id",
+			"value": "",
+			"type": "default"
+		}
+	]
+}
