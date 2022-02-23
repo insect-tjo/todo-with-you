@@ -17,7 +17,7 @@ Amazon DynamoDBのテーブルインスタンスは全体で1つです。
 なお、Amazon API Gatewayの機能を用いて、APIドキュメントを作成しております。
 
 ## アーキテクチャ
-![Architecture Diagram](images/archi.png)
+![Architecture Diagram](images/archi1.png)
 
 ## Getting Started
 
