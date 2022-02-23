@@ -70,6 +70,13 @@ export class AwsCdkTodoStack extends Stack {
       inlinePolicies: { CustomPolicyDDB },
     })
 
+    //Lambdaが関数内で引き受けるロール(scope:Admin用)
+    const ddbBaseRoleforAdmin = new iam.Role (this, 'DynamoBaseRoleforAdmin',{
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [ iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole") ] ,
+      inlinePolicies: { CustomPolicyDDB },
+    })
+
     //DynamoDBへのPUT用Lambda(POST)
     const postToDynamo = new lambda.Function(this, 'postToDynamo', {
       code: lambda.Code.fromAsset(`./lambda/todos/post`),
@@ -148,17 +155,76 @@ export class AwsCdkTodoStack extends Stack {
       role: lambdaExecSTSRole
     });
 
+    //dynamo-lambda(GET Admin)
+    const getFromDynamoAdmin = new lambda.Function(this, 'getFromDynamoAdmin', {
+      code: lambda.Code.fromAsset(`./lambda/todos/admin-get`),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: 'index.handler',
+      environment: {
+        'DYNAMODB_NAME' : table.tableName,
+        'DYNAMODB_ARN' : table.tableArn,
+        'DYNAMIC_POLICY_ROLE_ARN' : ddbBaseRole.roleArn,
+      },
+      role: ddbBaseRoleforAdmin
+    });
+
     // cognito userpool for rest API user
     const userPool = new cognito.UserPool(this, 'UserPool', {
       removalPolicy: RemovalPolicy.DESTROY,
     });
+    
+    // Resource Server Scope for user
+    const userScope = new cognito.ResourceServerScope({ scopeName: 'user', scopeDescription: 'Read-only access' });
+
+    // Resource Server Scope for admin
+    const adminScope = new cognito.ResourceServerScope({ scopeName: 'admin', scopeDescription: 'Full access' }); 
+
+    // Resource Server
+    const resourceServer = userPool.addResourceServer('ResourceServer', {
+      identifier: 'role',
+      scopes: [ userScope, adminScope ],
+    });
 
     // userpool app client 
-    userPool.addClient('todoUserClient',{
-      authFlows: {
-        userPassword: true,
-      }
+    const userClient = userPool.addClient('todoUserClient',{
+      oAuth: {
+        flows: {
+          implicitCodeGrant: true,
+        },
+        callbackUrls: [
+          'https://www.sampleapp-todo-dummy.com/',
+        ],
+        scopes: [ cognito.OAuthScope.resourceServer(resourceServer, userScope) ],
+      },
     });
+
+    // userpool app client 
+    const adminClient = userPool.addClient('todoAdminClient',{
+      generateSecret: true,
+      oAuth: {
+        flows: {
+          clientCredentials: true,
+        },
+        callbackUrls: [
+          'https://www.sampleapp-todo-dummy.com/',
+        ],
+        scopes: [ cognito.OAuthScope.resourceServer(resourceServer, adminScope) ],
+      },
+    });
+
+    // signin domain
+    const signInDomain = userPool.addDomain('SignInDomain', {
+      cognitoDomain: {
+        //domainPrefixは重複することがあるため、任意の値に変更ください。
+        domainPrefix: 'todo-app-sample-xxxxx',
+      },
+    });
+    
+    // redirect URL
+    const redirectUrl = signInDomain.signInUrl(userClient, {
+      redirectUri: 'https://www.sampleapp-todo-dummy.com/', // must be a URL configured under 'callbackUrls' with the client
+    });
+    
 
     // API Gateway(REST API)
     this.todoApiGateway = new apigateway.RestApi(this, 'todoApi', {
@@ -175,6 +241,7 @@ export class AwsCdkTodoStack extends Stack {
     //Add a resource to the API gateway 
     const resource = this.todoApiGateway.root.addResource('todos');
     const resource_id = resource.addResource('{todo-id}');
+    const resourceAdmin = this.todoApiGateway.root.addResource('admintodos');
 
     // /// resource collection 
     //Add a method to the Resource(todo):POST
@@ -183,7 +250,11 @@ export class AwsCdkTodoStack extends Stack {
       new apigateway.LambdaIntegration(postToDynamo),
       {
         authorizer: auth,
-        authorizationType: apigateway.AuthorizationType.COGNITO
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, userScope).scopeName,
+          ],
       }
     );
  
@@ -193,7 +264,11 @@ export class AwsCdkTodoStack extends Stack {
       new apigateway.LambdaIntegration(getFromDynamo),
       {
         authorizer: auth,
-        authorizationType: apigateway.AuthorizationType.COGNITO
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, userScope).scopeName,
+          ],
       }
     );
 
@@ -204,7 +279,11 @@ export class AwsCdkTodoStack extends Stack {
       new apigateway.LambdaIntegration(updateToDynamo),
       {
         authorizer: auth,
-        authorizationType: apigateway.AuthorizationType.COGNITO
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, userScope).scopeName,
+          ],
       }
     );
 
@@ -214,7 +293,11 @@ export class AwsCdkTodoStack extends Stack {
       new apigateway.LambdaIntegration(patchToDynamo),
       {
         authorizer: auth,
-        authorizationType: apigateway.AuthorizationType.COGNITO
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, userScope).scopeName,
+          ],
       }
     );
 
@@ -224,7 +307,11 @@ export class AwsCdkTodoStack extends Stack {
       new apigateway.LambdaIntegration(deleteFromDynamo),
       {
         authorizer: auth,
-        authorizationType: apigateway.AuthorizationType.COGNITO
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, userScope).scopeName,
+          ],
       }
     );
 
@@ -234,7 +321,25 @@ export class AwsCdkTodoStack extends Stack {
       new apigateway.LambdaIntegration(getFromDynamoObj),
       {
         authorizer: auth,
-        authorizationType: apigateway.AuthorizationType.COGNITO
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, userScope).scopeName,
+          ],
+      }
+    );
+
+    // //Add a method to the Resource(todo):GET
+    resourceAdmin.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(getFromDynamoAdmin),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+        authorizationScopes: 
+          [
+            cognito.OAuthScope.resourceServer(resourceServer, adminScope).scopeName
+          ],
       }
     );
 
