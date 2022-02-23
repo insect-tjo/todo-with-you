@@ -3,13 +3,12 @@ import { Construct } from 'constructs';
 import  * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
-// import { CognitoToApiGatewayToLambda } from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
-import * as cognitoApigLambda from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
 
 export class AwsCdkTodoStack extends Stack {
 
-  public readonly constCAL: cognitoApigLambda.CognitoToApiGatewayToLambda;
+  public readonly todoApiGateway: apigateway.RestApi;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -149,69 +148,95 @@ export class AwsCdkTodoStack extends Stack {
       role: lambdaExecSTSRole
     });
 
-    // The code that defines your stack goes here
-    this.constCAL = new cognitoApigLambda.CognitoToApiGatewayToLambda(this, 'cognito-apigateway-lambda', {
-      existingLambdaObj: getFromDynamo,
-      apiGatewayProps: {
-        proxy: false,
-        // defaultCorsPreflightOptions: {
-        //   allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        //   allowMethods: apigateway.Cors.ALL_METHODS
-        // },
-        deployOptions: {
-          stageName: apiVersion,
-        },
-      },
-      cognitoUserPoolClientProps: {
-        authFlows: {
-          userPassword: true,
-        }
+    // cognito userpool for rest API user
+    const userPool = new cognito.UserPool(this, 'UserPool', {
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // userpool app client 
+    userPool.addClient('todoUserClient',{
+      authFlows: {
+        userPassword: true,
       }
-  });
+    });
+
+    // API Gateway(REST API)
+    this.todoApiGateway = new apigateway.RestApi(this, 'todoApi', {
+      deployOptions: {
+        stageName: apiVersion,
+      },
+    });
+
+    // Integrate Cognito to API gateway
+    const auth = new apigateway.CognitoUserPoolsAuthorizer(this, 'todoAuthorizer', {
+      cognitoUserPools: [userPool]
+    });
 
     //Add a resource to the API gateway 
-    const resource = this.constCAL.apiGateway.root.addResource('todos');
+    const resource = this.todoApiGateway.root.addResource('todos');
     const resource_id = resource.addResource('{todo-id}');
 
     // /// resource collection 
     //Add a method to the Resource(todo):POST
     resource.addMethod(
       "POST",
-      new apigateway.LambdaIntegration(postToDynamo)
+      new apigateway.LambdaIntegration(postToDynamo),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO
+      }
     );
  
     // //Add a method to the Resource(todo):GET
     resource.addMethod(
       "GET",
-      new apigateway.LambdaIntegration(getFromDynamo)
+      new apigateway.LambdaIntegration(getFromDynamo),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO
+      }
     );
 
     // /// resource_id 
     // //Add a method to the Resource(todo):PUT
      resource_id.addMethod(
       "PUT",
-      new apigateway.LambdaIntegration(updateToDynamo)
+      new apigateway.LambdaIntegration(updateToDynamo),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO
+      }
     );
 
     // //Add a method to the Resource(todo):PUT
     resource_id.addMethod(
       "PATCH",
-      new apigateway.LambdaIntegration(patchToDynamo)
+      new apigateway.LambdaIntegration(patchToDynamo),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO
+      }
     );
 
     // //Add a method to the Resource(todo):DELETE
     resource_id.addMethod(
       "DELETE",
-      new apigateway.LambdaIntegration(deleteFromDynamo)
+      new apigateway.LambdaIntegration(deleteFromDynamo),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO
+      }
     );
 
     // //Add a method to the Resource(todo):GET
     resource_id.addMethod(
       "GET",
-      new apigateway.LambdaIntegration(getFromDynamoObj)
+      new apigateway.LambdaIntegration(getFromDynamoObj),
+      {
+        authorizer: auth,
+        authorizationType: apigateway.AuthorizationType.COGNITO
+      }
     );
-
-    this.constCAL.addAuthorizers();
 
   }
 
