@@ -9,7 +9,7 @@ test('Fine grained: AwsCdkTodo', () => {
     const template = Template.fromStack(targetStack)
 
     // Functionが6つ作られていることを確認する
-    template.resourceCountIs('AWS::Lambda::Function', 6)
+    template.resourceCountIs('AWS::Lambda::Function', 7)
 
 
     // DynamoDBのパーティションキー、ソートキーが正しいことを確認する。
@@ -36,7 +36,7 @@ test('Fine grained: AwsCdkTodo', () => {
     });
 
     // API GatewayのMethodが6つ作成されていることを確認する。
-    template.resourceCountIs("AWS::ApiGateway::Method", 6);
+    template.resourceCountIs("AWS::ApiGateway::Method", 7);
 
 
 
