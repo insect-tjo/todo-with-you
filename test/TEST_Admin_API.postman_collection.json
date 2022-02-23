@@ -1,0 +1,80 @@
+{
+	"info": {
+		"_postman_id": "9f7e1ff1-c095-493b-9df4-80f3a419108b",
+		"name": "TEST_Admin_API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "get_admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.variables.get(\"apigatewayid\");"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/admintodos",
+					"protocol": "https",
+					"host": [
+						"{{apigatewayid}}",
+						"execute-api",
+						"ap-northeast-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"v1",
+						"admintodos"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "oauth2",
+		"oauth2": [
+			{
+				"key": "addTokenTo",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "apigatewayid",
+			"value": "xxxxxx",
+			"type": "default"
+		}
+	]
+}

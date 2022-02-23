@@ -1,72 +1,10 @@
 {
 	"info": {
-		"_postman_id": "3cf174fe-40c1-4c65-87d4-766e06d4c9e9",
+		"_postman_id": "90376c39-b878-4413-ae22-e4d355a84532",
 		"name": "Test_Todo_API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
-		{
-			"name": "Auth with cognito",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"let token = pm.response.json().AuthenticationResult;\r",
-							"pm.collectionVariables.set(\"idtoken\", token.IdToken);"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"protocolProfileBehavior": {
-				"disabledSystemHeaders": {
-					"content-type": true
-				}
-			},
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/x-amz-json-1.1",
-						"type": "default"
-					},
-					{
-						"key": "X-Amz-Target",
-						"value": "AWSCognitoIdentityProviderService.InitiateAuth",
-						"type": "default"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"AuthFlow\": \"USER_PASSWORD_AUTH\",\r\n    \"ClientId\": \"{{ClientId}}\",\r\n    \"AuthParameters\": {\r\n        \"USERNAME\": \"{{username}}\",\r\n        \"PASSWORD\": \"{{password}}\"\r\n    }\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "https://cognito-idp.ap-northeast-1.amazonaws.com/",
-					"protocol": "https",
-					"host": [
-						"cognito-idp",
-						"ap-northeast-1",
-						"amazonaws",
-						"com"
-					],
-					"path": [
-						""
-					]
-				}
-			},
-			"response": []
-		},
 		{
 			"name": "post_todos_create_resource",
 			"event": [
@@ -93,17 +31,8 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "POST",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "{{idtoken}}",
-						"type": "default"
-					}
-				],
+				"header": [],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n    \"title\": \"todo title testdata\" ,\r\n    \"content\": \"todo content testdata\"\r\n}",
@@ -148,13 +77,7 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "{{idtoken}}",
-						"type": "default"
-					}
-				],
+				"header": [],
 				"url": {
 					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos",
 					"protocol": "https",
@@ -192,13 +115,7 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "{{idtoken}}",
-						"type": "default"
-					}
-				],
+				"header": [],
 				"url": {
 					"raw": "https://{{apigatewayid}}.execute-api.ap-northeast-1.amazonaws.com/v1/todos/{{todo-id}}",
 					"protocol": "https",
@@ -252,13 +169,7 @@
 			],
 			"request": {
 				"method": "PUT",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "{{idtoken}}",
-						"type": "default"
-					}
-				],
+				"header": [],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n    \"title\": \"updated todo title testdataa\" ,\r\n    \"content\": \"updated content testdata\" ,\r\n    \"status\": \"todo\"\r\n}\r\n",
@@ -311,13 +222,7 @@
 			],
 			"request": {
 				"method": "PATCH",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "{{idtoken}}",
-						"type": "default"
-					}
-				],
+				"header": [],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n    \"status\": \"in-progress\"\r\n}",
@@ -400,6 +305,51 @@
 			"response": []
 		}
 	],
+	"auth": {
+		"type": "oauth2",
+		"oauth2": [
+			{
+				"key": "tokenName",
+				"value": "usertoken",
+				"type": "string"
+			},
+			{
+				"key": "grant_type",
+				"value": "implicit",
+				"type": "string"
+			},
+			{
+				"key": "redirect_uri",
+				"value": "https://www.sampleapp-todo-dummy.com/",
+				"type": "string"
+			},
+			{
+				"key": "challengeAlgorithm",
+				"value": "S256",
+				"type": "string"
+			},
+			{
+				"key": "clientId",
+				"value": "xxxxxx",
+				"type": "string"
+			},
+			{
+				"key": "authUrl",
+				"value": "https://todo-app-sample-xxxxxx.auth.ap-northeast-1.amazoncognito.com/login",
+				"type": "string"
+			},
+			{
+				"key": "addTokenTo",
+				"value": "header",
+				"type": "string"
+			},
+			{
+				"key": "client_authentication",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
 	"event": [
 		{
 			"listen": "prerequest",
@@ -423,27 +373,12 @@
 	"variable": [
 		{
 			"key": "ClientId",
-			"value": "xxxxxxxxxxxxxxxxxxxxxxxxx",
-			"type": "default"
-		},
-		{
-			"key": "username",
-			"value": "xxxxxxx",
-			"type": "default"
-		},
-		{
-			"key": "password",
 			"value": "xxxxxxx",
 			"type": "default"
 		},
 		{
 			"key": "apigatewayid",
-			"value": "xxxxxxxx",
-			"type": "default"
-		},
-		{
-			"key": "idtoken",
-			"value": "",
+			"value": "xxxxxxx",
 			"type": "default"
 		},
 		{
