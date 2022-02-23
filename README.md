@@ -36,14 +36,9 @@ Amazon DynamoDBのテーブルインスタンスは全体で1つです。
 1. git clone https://github.com/insect-tjo/todo-with-you
 
 
-2. constructのインストール
+2. スタックのデプロイ
 ```sh
-npm i -s @aws-solutions-constructs/aws-cognito-apigateway-lambda
-```
-
-3. スタックのデプロイ
-```sh
-cdk deploy --all
+npx cdk deploy --all
 ```
 
 ### テスト(CDK: Fine-grained assertions)
@@ -76,7 +71,7 @@ aws cognito-idp admin-create-user --user-pool-id "<user-rool-id>" --username tes
 
 
 ```sh
-aws cognito-idp admin-set-user-password --user-pool-id "<user-rool-id>" --username testuser --password <password> --permanent 
+aws cognito-idp admin-set-user-password --user-pool-id "<user-pool-id>" --username testuser --password <password> --permanent 
 ```
 3. PostManのパラメータ設定
 
@@ -114,18 +109,154 @@ PostManでシナリオ(test/Test_Todo_API.postman_collection.json)をインポ�
 ![Architecture Diagram](images/postman_result.png)
 
 
-
-
 ## clean up
 1. スタックの削除
 ```sh
-cdk destroy --all
+npx cdk destroy --all
 ```
-> **IMPORTANT:** Amazon Cognitoは削除しない設定にしている。
- (todo:Amazon Cognitoの削除ポリシを変更。 )
+> **IMPORTANT:** Amazon Cognito Userpoolも削除されます。
 
 
-## 使い方(API)
-T.B.D.
+## デプロイされるAPIの仕様
+
+### APIの概要
+
+| リソース          | メソッド |概要                   |
+| --------------   | -------- |-----------------------|
+| /todos           | POST     | ToDoを作成する。       |
+| /todos           | GET      | ToDoの一覧を取得する。  |
+| /todos/{todo-id} | GET      | 特定のToDoを取得する。 |
+| /todos/{todo-id} | PUT      | 特定のToDoを更新する。 |
+| /todos/{todo-id} | PATCH    | 特定のToDoを更新する。（ToDoの持つ状態のみを更新） |
+| /todos/{todo-id} | DELETE   | 特定のToDoを削除する。 |
+
+#### /todos POST 
+ToDoを作成する。
+
+ - リクエスト
+
+| パラメータ種別   | パラメータ名(key) |値(value)               |
+| --------------  | ----------------- |-----------------------|
+| リクエストヘッダ | Authorization     | Cognitoでの認証時に払いだされるJWTトークン（IDトークン）  |
+| リクエストボディ | title             | ToDoのタイトル        |
+| リクエストボディ | content           | ToDoの内容            |
 
 
+ - レスポンス
+
+| パラメータ種別    | パラメータ名(key) |値(value)               |
+| --------------   | ----------------- |-----------------------|
+| レスポンスボディ  | title             | 生成したToDoのタイトル  |
+| レスポンスボディ  | content           | 生成したToDoの内容      |
+| レスポンスボディ  | status            | 生成したToDoの状態（初期値として、”todo”を返す）  |
+| レスポンスボディ  | userid            | ToDoを生成したユーザのID      |
+| レスポンスボディ  | todoid            | 生成したToDoのID      |
+
+#### /todos GET
+ToDoの一覧を取得する。
+
+ - リクエスト
+
+| パラメータ種別   | パラメータ名(key) |値(value)               |
+| --------------  | ----------------- |-----------------------|
+| リクエストヘッダ | Authorization     | Cognitoでの認証時に払いだされるJWTトークン（IDトークン）  |
+
+
+ - レスポンス
+
+| パラメータ種別    | パラメータ名(key) |値(value)               |
+| --------------   | ----------------- |-----------------------|
+| レスポンスボディ  | title             | 生成したToDoのタイトル  |
+| レスポンスボディ  | content           | 生成したToDoの内容      |
+| レスポンスボディ  | status            | 生成したToDoの状態（初期値として、”todo”を返す）  |
+| レスポンスボディ  | userid            | ToDoを生成したユーザのID      |
+| レスポンスボディ  | todoid            | 生成したToDoのID      |
+
+※全てのToDoを一覧で返す。最大30個。
+
+
+#### /todos/{todo-id} GET  
+ToDoを取得する。
+
+ - リクエスト
+
+| パラメータ種別   | パラメータ名(key) |値(value)               |
+| --------------  | ----------------- |-----------------------|
+| リクエストヘッダ | Authorization     | Cognitoでの認証時に払いだされるJWTトークン（IDトークン）  |
+| リクエストボディ | todoid            | 取得するToDoのID      |
+
+
+ - レスポンス
+
+| パラメータ種別    | パラメータ名(key) |値(value)               |
+| --------------   | ----------------- |-----------------------|
+| レスポンスボディ  | title             | 生成したToDoのタイトル  |
+| レスポンスボディ  | content           | 生成したToDoの内容      |
+| レスポンスボディ  | status            | 生成したToDoの状態（初期値として、”todo”を返す）  |
+| レスポンスボディ  | userid            | ToDoを生成したユーザのID      |
+| レスポンスボディ  | todoid            | 生成したToDoのID      |
+
+
+#### /todos/{todo-id} PUT
+ToDoを更新する。
+
+ - リクエスト
+
+| パラメータ種別   | パラメータ名(key) |値(value)               |
+| --------------  | ----------------- |-----------------------|
+| リクエストヘッダ | Authorization     | Cognitoでの認証時に払いだされるJWTトークン（IDトークン）  |
+| パスパラメータ  | {todo-id}          | todoidを指定する。      |
+| リクエストボディ | title             | 更新後のToDoのタイトル  |
+| リクエストボディ | content           | 更新後のToDoの内容  |
+| リクエストボディ  | status           | 更新後のToDoの状態  |
+
+ - レスポンス
+
+| パラメータ種別    | パラメータ名(key) |値(value)               |
+| --------------   | ----------------- |-----------------------|
+| レスポンスボディ  | title             | 更新後のToDoのタイトル  |
+| レスポンスボディ  | content           | 更新後のToDoの内容      |
+| レスポンスボディ  | status            | 更新後のToDoの状態  |
+| レスポンスボディ  | userid            | ToDoのユーザID      |
+| レスポンスボディ  | todoid            | ToDoのID      |
+
+#### /todos/{todo-id} PATCH
+ToDoのstatusのみを更新する。
+
+ - リクエスト
+
+| パラメータ種別   | パラメータ名(key) |値(value)               |
+| --------------  | ----------------- |-----------------------|
+| リクエストヘッダ | Authorization     | Cognitoでの認証時に払いだされるJWTトークン（IDトークン）  |
+| パスパラメータ  | {todo-id}          | todoidを指定する。      |
+| リクエストボディ  | status           | 更新後のToDoの状態  |
+
+ - レスポンス
+
+| パラメータ種別    | パラメータ名(key) |値(value)               |
+| --------------   | ----------------- |-----------------------|
+| レスポンスボディ  | title             | 更新後のToDoのタイトル  |
+| レスポンスボディ  | content           | 更新後のToDoの内容      |
+| レスポンスボディ  | status            | 更新後のToDoの状態  |
+| レスポンスボディ  | userid            | ToDoのユーザID      |
+| レスポンスボディ  | todoid            | ToDoのID      |
+
+#### /todos/{todo-id} DELETE
+ToDoを削除する。
+
+ - リクエスト
+
+| パラメータ種別   | パラメータ名(key) |値(value)               |
+| --------------  | ----------------- |-----------------------|
+| リクエストヘッダ | Authorization     | Cognitoでの認証時に払いだされるJWTトークン（IDトークン）  |
+| パスパラメータ  | {todo-id}          | todoidを指定する。      |
+
+ - レスポンス
+
+| パラメータ種別    | パラメータ名(key) |値(value)               |
+| --------------   | ----------------- |-----------------------|
+| レスポンスボディ  | title             | 削除したToDoのタイトル  |
+| レスポンスボディ  | content           | 削除したToDoの内容      |
+| レスポンスボディ  | status            | 削除したToDoの状態  |
+| レスポンスボディ  | userid            | 削除したToDoのユーザID      |
+| レスポンスボディ  | todoid            | 削除したToDoのID      |
