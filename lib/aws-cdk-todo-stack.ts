@@ -14,6 +14,8 @@ export class AwsCdkTodoStack extends Stack {
     super(scope, id, props);
 
     let apiVersion: string = "v1";
+    //domainPrefixは重複することがあるため、ランダム値を生成
+    let cognitoDomainPrefix: string = "todo-app-" + Math.random().toString(32).substring(2);
 
     //todo DynamoDB
     const table = new ddb.Table(this, "todo",{
@@ -215,8 +217,7 @@ export class AwsCdkTodoStack extends Stack {
     // signin domain
     const signInDomain = userPool.addDomain('SignInDomain', {
       cognitoDomain: {
-        //domainPrefixは重複することがあるため、任意の値に変更ください。
-        domainPrefix: 'todo-app-sample-xxxxx',
+        domainPrefix: cognitoDomainPrefix,
       },
     });
     
