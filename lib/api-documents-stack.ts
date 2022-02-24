@@ -1,8 +1,6 @@
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-// import { CognitoToApiGatewayToLambda } from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
-import * as cognitoApigLambda from '@aws-solutions-constructs/aws-cognito-apigateway-lambda';
 
 // properties for the apiDocumentsStack
 export interface apiDocmentsStackProps {

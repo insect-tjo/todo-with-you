@@ -35,9 +35,15 @@ Amazon DynamoDBのテーブルインスタンスは全体で1つです。
 
 1. git clone https://github.com/insect-tjo/todo-with-you
 
-
-2. スタックのデプロイ
+2. ライブラリインストール
 ```sh
+npx npm install -g aws-cdk@2.12.0
+npx npm install
+```
+
+3. スタックのデプロイ
+```sh
+npx cdk bootstrap
 npx cdk deploy --all
 ```
 
@@ -55,7 +61,7 @@ REST APIに対するリクエストを発行し、認証を含めたE2Eの検証
 1. Cognito ユーザの作成(AWS CLI)
 テスト用のユーザを作成します。
 
- `<user-rool-id>`は、デプロイしたCognito User PoolのIDに書き換えてください。
+ `<user-pool-id>`は、デプロイしたCognito User PoolのIDに書き換えてください。
 
  例：ap-northeast-1_xxxxxxxxx
 
@@ -88,6 +94,7 @@ PostManでシナリオ(test/Test_Todo_API.postman_collection.json)をインポ�
 | `apigatewayid` | Amazon API gatewayのID（例：f645hxxxxx）  |
 
 なお、`todo-id` はシナリオ実行中に取得するため、入力不要です。
+> **IMPORTANT:** 　パラメータ入力後は、右上の`Save`をクリックください。
 
 ![Architecture Diagram](images/postman_variables_user.png)
 
@@ -115,6 +122,7 @@ PostManでシナリオ(test/Test_Todo_API.postman_collection.json)をインポ�
 
 ログイン画面が表示されるので、
 1、 2 で作成したユーザ名、パスワードでログインください。
+
 ![Architecture Diagram](images/postman_oauth_3.png)
 
 5. PostManのテストシナリオ実行(ユーザ向けAPIの検証)
@@ -141,6 +149,8 @@ PostManでシナリオ(test/Test_Admin_API.postman_collection.json)をインポ�
 | VARIABLE       | 概要                       |
 | -------------- | -------------------------- |
 | `apigatewayid` | Amazon API gatewayのID（例：f645hxxxxx）  |
+> **IMPORTANT:** 　パラメータ入力後は、右上の`Save`をクリックください。
+
 
 ![Architecture Diagram](images/postman_variables_admin.png)
 
