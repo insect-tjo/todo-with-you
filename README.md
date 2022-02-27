@@ -37,8 +37,8 @@ Amazon DynamoDBのテーブルインスタンスは全体で1つです。
 
 2. ライブラリインストール
 ```sh
-npx npm install -g aws-cdk@2.12.0
-npx npm install
+npm install -g aws-cdk@2.12.0
+npm install
 ```
 
 3. スタックのデプロイ
@@ -66,7 +66,7 @@ REST APIに対するリクエストを発行し、認証を含めたE2Eの検証
  例：ap-northeast-1_xxxxxxxxx
 
 ```sh
-aws cognito-idp admin-create-user --user-pool-id "<user-rool-id>" --username testuser --user-attributes Name=email,Value="test@test.com" Name=email_verified,Value=true --message-action SUPPRESS
+aws cognito-idp admin-create-user --user-pool-id "<user-pool-id>" --username testuser --user-attributes Name=email,Value="test@test.com" Name=email_verified,Value=true --message-action SUPPRESS
 ```
 
 2. Cognito テストユーザのパスワード変更
