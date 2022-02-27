@@ -1,4 +1,4 @@
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import  * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
@@ -16,6 +16,9 @@ export class AwsCdkTodoStack extends Stack {
     let apiVersion: string = "v1";
     //domainPrefixは重複することがあるため、ランダム値を生成
     let cognitoDomainPrefix: string = "todo-app-" + Math.random().toString(32).substring(2);
+
+
+    let callBackUrl: string = "https://www.sampleapp-todo-dummy.com/";
 
     //todo DynamoDB
     const table = new ddb.Table(this, "todo",{
@@ -194,7 +197,7 @@ export class AwsCdkTodoStack extends Stack {
           implicitCodeGrant: true,
         },
         callbackUrls: [
-          'https://www.sampleapp-todo-dummy.com/',
+          callBackUrl,
         ],
         scopes: [ cognito.OAuthScope.resourceServer(resourceServer, userScope) ],
       },
@@ -208,7 +211,7 @@ export class AwsCdkTodoStack extends Stack {
           clientCredentials: true,
         },
         callbackUrls: [
-          'https://www.sampleapp-todo-dummy.com/',
+          callBackUrl,
         ],
         scopes: [ cognito.OAuthScope.resourceServer(resourceServer, adminScope) ],
       },
@@ -223,7 +226,7 @@ export class AwsCdkTodoStack extends Stack {
     
     // redirect URL
     const redirectUrl = signInDomain.signInUrl(userClient, {
-      redirectUri: 'https://www.sampleapp-todo-dummy.com/', // must be a URL configured under 'callbackUrls' with the client
+      redirectUri: callBackUrl, // must be a URL configured under 'callbackUrls' with the client
     });
     
 
@@ -343,6 +346,55 @@ export class AwsCdkTodoStack extends Stack {
           ],
       }
     );
+
+    //Output API Gateway ID
+    new CfnOutput(this, 'ApiGatewayId', {
+      value: this.todoApiGateway.restApiId,
+      description: 'Api gateway ID',
+      exportName: 'ApiGatewayId',
+    });
+
+    //Output Cognito domain (URL)
+    new CfnOutput(this, 'CognitoUserPoolDomain', {
+      value: "https://" + signInDomain.domainName + ".auth." + this.region + ".amazoncognito.com",
+      description: 'CognitoUserpool Domain',
+      exportName: 'CognitoUserPoolDomain',
+    });
+
+    //Output Cognito Userpool ID
+    new CfnOutput(this, 'CognitoUserPoolID', {
+      value: userPool.userPoolId,
+      description: 'CognitoUserpool Domain',
+      exportName: 'CognitoUserPoolIDn',
+    });
+
+    //Output App Client ID (for user)
+    new CfnOutput(this, 'CognitoUserPoolAppIDforUser', {
+      value: userClient.userPoolClientId,
+      description: 'Cognito UserPool Application Client ID for User',
+      exportName: 'CognitoUserPoolAppIDforUser',
+    });
+
+    //Output Callback URL (for user)
+    new CfnOutput(this, 'CognitoUserPoolcallbackUrlforUser', {
+      value: callBackUrl,
+      description: 'Cognito UserPool callback Url for User',
+      exportName: 'CognitoUserPoolCallbackforUser',
+    });
+
+    //Output App Client ID (for admin)
+    new CfnOutput(this, 'CognitoUserPoolAppIDforAdmin', {
+      value: adminClient.userPoolClientId,
+      description: 'Cognito UserPool Application ID for Admin',
+      exportName: 'CognitoUserPoolAppIDforAdmin',
+    });
+
+    //Output Callback URL (for admin)
+    new CfnOutput(this, 'CognitoUserPoolCallbackUrlforAdmin', {
+      value: callBackUrl,
+      description: 'Cognito UserPool Callback URL for Admin',
+      exportName: 'CognitoUserPoolCallbackUrlforAdmin',
+    });
 
   }
 
